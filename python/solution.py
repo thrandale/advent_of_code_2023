@@ -11,19 +11,19 @@ class Solution:
 
     @classmethod
     def __Part1(cls) -> int:
-        with cls.__TimeRun():
+        with cls.__TimeIt():
             result = cls._Part1()
             print(f"Part 1: {result}", end=", ")
 
     @classmethod
     def __Part2(cls) -> int:
-        with cls.__TimeRun():
+        with cls.__TimeIt():
             result = cls._Part2()
             print(f"Part 2: {result}", end=", ")
 
     @staticmethod
     @contextmanager
-    def __TimeRun() -> None:
+    def __TimeIt() -> None:
         start = time()
         yield
         end = time()
