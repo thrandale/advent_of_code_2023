@@ -26,13 +26,13 @@ class Day2(Solution):
     def _Part2(cls) -> int:
         total = 0
         for game in cls.inputLines:
-            minColor = {"red": 0, "green": 0, "blue": 0}
+            maxUsed = {}
             for r in game[game.find(":") + 2 :].split(";"):
                 for s in r.split(","):
                     count, color = s.strip().split(" ")
-                    minColor[color] = max(minColor[color], int(count))
+                    maxUsed[color] = max(maxUsed[color], int(count))
 
-            total += minColor["red"] * minColor["green"] * minColor["blue"]
+            total += maxUsed["red"] * maxUsed["green"] * maxUsed["blue"]
 
         return total
 
