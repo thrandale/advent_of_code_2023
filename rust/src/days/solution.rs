@@ -1,8 +1,8 @@
 use std::{env, path::Path};
 
 pub trait Solution {
-    fn part1(&self, input: &str) -> String;
-    fn part2(&self, input: &str) -> String;
+    fn part1(&self, input: &str) -> i32;
+    fn part2(&self, input: &str) -> i32;
 
     fn input_lines(&self, input: &str) -> Vec<String> {
         return input.lines().map(|s| s.to_string()).collect();

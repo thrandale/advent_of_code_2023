@@ -4,8 +4,8 @@ use std::{cmp::max, collections::HashMap};
 pub struct Day2;
 
 impl Solution for Day2 {
-    fn part1(&self, input: &str) -> String {
-        let mut total = 0;
+    fn part1(&self, input: &str) -> i32 {
+        let mut total: i32 = 0;
         let max_colors = HashMap::from([("red", 12), ("green", 13), ("blue", 14)]);
 
         for (i, game) in self.input_lines(input).iter().enumerate() {
@@ -21,13 +21,13 @@ impl Solution for Day2 {
                 continue;
             }
 
-            total += i + 1;
+            total += i as i32 + 1;
         }
 
-        return total.to_string();
+        return total;
     }
 
-    fn part2(&self, input: &str) -> String {
+    fn part2(&self, input: &str) -> i32 {
         let mut total = 0;
         for game in self.input_lines(input) {
             let mut max_used = HashMap::new();
@@ -44,6 +44,6 @@ impl Solution for Day2 {
             total += max_used.values().product::<i32>();
         }
 
-        return total.to_string();
+        return total;
     }
 }

@@ -21,17 +21,17 @@ impl Day1 {
 }
 
 impl Solution for Day1 {
-    fn part1(&self, input: &str) -> String {
+    fn part1(&self, input: &str) -> i32 {
         let mut total = 0;
         for line in self.input_lines(input) {
             let (first, last) = self.find_first_and_last(&line);
             total += format!("{}{}", first, last).parse::<i32>().unwrap();
         }
 
-        return total.to_string();
+        return total;
     }
 
-    fn part2(&self, input: &str) -> String {
+    fn part2(&self, input: &str) -> i32 {
         let mut total = 0;
         let str_nums = HashMap::from([
             ("one", "o1e"),
@@ -54,6 +54,6 @@ impl Solution for Day1 {
             total += format!("{}{}", first, last).parse::<i32>().unwrap();
         }
 
-        return total.to_string();
+        return total;
     }
 }
