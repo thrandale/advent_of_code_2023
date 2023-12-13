@@ -53,20 +53,20 @@ class Day10(Solution):
             coords = cls.CoordsForDir(sPos, d)
             char = grid[coords[1]][coords[0]]
             if (d + 2) % 4 in cls.VALID_DIRS[char]:
-                lastDir = {(d + 2) % 4}
+                lastDir = (d + 2) % 4
                 currentChar = char
                 currentPos = coords
                 break
 
         while True:
-            nextDir = cls.VALID_DIRS[currentChar].difference(lastDir).pop()
+            nextDir = cls.VALID_DIRS[currentChar].difference({lastDir}).pop()
             currentPos = cls.CoordsForDir(currentPos, nextDir)
             currentChar = grid[currentPos[1]][currentPos[0]]
             if currentChar == "S":
                 steps += 1
                 break
 
-            lastDir = {(nextDir + 2) % 4}
+            lastDir = (nextDir + 2) % 4
             steps += 1
 
         return int(steps / 2)
@@ -107,69 +107,115 @@ class Day10(Solution):
     @classmethod
     def _Part2(cls) -> int:
         cornerDirs = {
-            "7": {Dir.UP, Dir.RIGHT},
-            "J": {Dir.RIGHT, Dir.DOWN},
             "L": {Dir.DOWN, Dir.LEFT},
             "F": {Dir.LEFT, Dir.UP},
+            "7": {Dir.UP, Dir.RIGHT},
+            "J": {Dir.RIGHT, Dir.DOWN},
         }
+
         grid = cls.GetGrid()
         sIndex = "".join(cls.inputLines).index("S")
-        sPos = (sIndex % len(grid[0]), sIndex // len(grid[0]))
+        startPos = (sIndex % len(grid[0]), sIndex // len(grid[0]))
+        validDirsForStart = set()
         for d in Dir:
-            coords = cls.CoordsForDir(sPos, d)
+            coords = cls.CoordsForDir(startPos, d)
             char = grid[coords[1]][coords[0]]
             if (d + 2) % 4 in cls.VALID_DIRS[char]:
-                lastDir = {(d + 2) % 4}
+                lastDir = (d + 2) % 4
                 currentChar = char
                 currentPos = coords
+                validDirsForStart.add(d)
+            else:
+                topDir = {d}
+
+        # Replace the S with a valid char
+        for key, value in cls.VALID_DIRS.items():
+            if value == validDirsForStart:
+                grid[startPos[1]][startPos[0]] = key
+                break
 
         # for each node, the adjacent nodes that are adjacent to the path
         # {(x, y): {(x, y),...}}
         adjMap = {}
-        pathNodes = {sPos}
+        pathNodes = {startPos}
+        top = set()
+        bottom = set()
+        prevTopDir = topDir
 
         while True:
             adjMap.pop(currentPos, None)
             pathNodes.add(currentPos)
+            nextDir = cls.VALID_DIRS[currentChar].difference({lastDir}).pop()
+            # print()
+            # print("TopDir:", topDir)
+            # print("NextDir:", nextDir)
+            # print("CurrentPos:", currentPos)
+            # print("CurrentChar:", currentChar)
+
+            # If this is a corner we need to update the topDir
+            if currentChar in cornerDirs:
+                # print("  Corner")
+                prevTopDir = topDir.pop()
+                topDir = cornerDirs[currentChar].copy()
+                if (lastDir - 1) % 4 not in topDir:
+                    # Reverse the order of the topDir
+                    topDir = {(d + 2) % 4 for d in topDir}
+                # print("  New topDir:", topDir)
+
             for d in Dir:
-                if d in lastDir:
+                if d == lastDir or d == nextDir:
                     continue
+
                 coords = cls.CoordsForDir(currentPos, d)
                 adjMap.setdefault(coords, set()).add(currentPos)
 
-            nextDir = cls.VALID_DIRS[currentChar].difference(lastDir).pop()
+                if d in topDir:
+                    top.add(coords)
+                elif (d + 2) % 4 in topDir:
+                    bottom.add(coords)
+
             currentPos = cls.CoordsForDir(currentPos, nextDir)
-            currentChar = grid[currentPos[1]][currentPos[0]]
-            if currentChar == "S":
+            if currentPos == startPos:
                 break
 
-            lastDir = {(nextDir + 2) % 4}
+            if len(topDir) == 2:
+                topDir.remove(prevTopDir)
+                # print("  After removal:", topDir)
+
+            lastDir = (nextDir + 2) % 4
+            currentChar = grid[currentPos[1]][currentPos[0]]
 
         notEnclosed = set()
         enclosed = set()
 
         # Check all the nodes along the edge
-        nodesOnEdge = set()
-        for i in range(len(grid[0])):
-            nodesOnEdge.add((i, 0))
-            nodesOnEdge.add((i, len(grid) - 1))
-
-        for i in range(len(grid)):
-            nodesOnEdge.add((0, i))
-            nodesOnEdge.add((len(grid[0]) - 1, i))
+        width, height = len(grid[0]), len(grid)
+        nodesOnEdge = {(i, j) for i in range(width) for j in [0, height - 1]} | {
+            (i, j) for j in range(height) for i in [0, width - 1]
+        }
 
         for node in nodesOnEdge:
             if node in pathNodes or node in notEnclosed:
                 continue
             notEnclosed.update(Day10.GetNodeGroup(grid, node, pathNodes))
 
+        if len(top.intersection(notEnclosed)) > 0:
+            for node in top.difference(pathNodes):
+                notEnclosed.update(
+                    Day10.GetNodeGroup(grid, node, pathNodes, notEnclosed)
+                )
+
         for y in range(len(grid)):
             for x in range(len(grid[0])):
                 if (x, y) in pathNodes:
-                    pass
                     print(colored(grid[y][x], "blue"), end="")
+                # elif (x, y) in top:
+                #     print(colored("T", "yellow"), end="")
+                # elif (x, y) in bottom:
+                #     print(colored("B", "yellow"), end="")
+                # else:
+                #     print(grid[y][x], end="")
                 elif (x, y) in notEnclosed:
-                    pass
                     print(colored("O", "red"), end="")
                 else:
                     enclosed.add((x, y))
