@@ -28,7 +28,7 @@ class Solution:
         yield
         end = time()
         total = end - start
-        if total < 0.01:
+        if total < 0.1:
             print(f"Took {total * 1000:.4f}ms")
         else:
             print(f"Took {total:.3f}s")
