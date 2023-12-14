@@ -26,9 +26,31 @@ class Day10(Solution):
         ".": {},
     }
 
-    @classmethod
-    def GetGrid(cls) -> list[list[str]]:
-        return [list(line) for line in cls.inputLines]
+    @staticmethod
+    def AddConnectedNodes(
+        grid: list[list[str]],
+        node: tuple[int, int],
+        pathNodes: set[tuple[int, int]],
+        group: set[tuple[int, int]],
+    ) -> set[tuple[int, int]]:
+        """Recursively gets all the non-path nodes that are connected to the given node"""
+        if node in pathNodes:
+            return
+
+        group.add(node)
+        for d in Dir:
+            coords = Day10.CoordsForDir(node, d)
+            if (
+                not Day10.IsInGrid(grid, coords)
+                or coords in group
+                or coords in pathNodes
+            ):
+                continue
+
+            Day10.AddConnectedNodes(grid, coords, pathNodes, group)
+            break
+        else:
+            return
 
     @staticmethod
     def CoordsForDir(current: tuple[int, int], direction: Dir) -> tuple[int, int]:
@@ -44,8 +66,20 @@ class Day10(Solution):
                 return (current[0] - 1, current[1])
 
     @staticmethod
-    def IsInGrid(grid: list[list[str]], coords: tuple[int, int]) -> bool:
-        return 0 <= coords[0] < len(grid[0]) and 0 <= coords[1] < len(grid)
+    def Draw(
+        grid: list[list[str]],
+        pathNodes: set[tuple[int, int]],
+        enclosed: set[tuple[int, int]],
+    ):
+        for y in range(len(grid)):
+            for x in range(len(grid[0])):
+                if (x, y) in pathNodes:
+                    print(colored(grid[y][x], "blue"), end="")
+                elif (x, y) in enclosed:
+                    print(colored("I", "green"), end="")
+                else:
+                    print(colored("O", "red"), end="")
+            print()
 
     @classmethod
     def GetFirstMove(
@@ -59,21 +93,13 @@ class Day10(Solution):
             if (d + 2) % 4 in cls.VALID_DIRS[char]:
                 return (sPos, (d + 2) % 4, char, coords)
 
+    @classmethod
+    def GetGrid(cls) -> list[list[str]]:
+        return [list(line) for line in cls.inputLines]
+
     @staticmethod
-    def DrawGrid(
-        grid: list[list[str]],
-        pathNodes: set[tuple[int, int]],
-        notEnclosed: set[tuple[int, int]],
-    ):
-        for y in range(len(grid)):
-            for x in range(len(grid[0])):
-                if (x, y) in pathNodes:
-                    print(colored(grid[y][x], "blue"), end="")
-                elif (x, y) in notEnclosed:
-                    print(colored("O", "red"), end="")
-                else:
-                    print(colored("I", "green"), end="")
-            print()
+    def IsInGrid(grid: list[list[str]], coords: tuple[int, int]) -> bool:
+        return 0 <= coords[0] < len(grid[0]) and 0 <= coords[1] < len(grid)
 
     @classmethod
     def _Part1(cls) -> int:
@@ -94,67 +120,36 @@ class Day10(Solution):
 
         return int(steps / 2)
 
-    @staticmethod
-    def UpdateNodeGroup(
-        grid: list[list[str]],
-        node: tuple[int, int],
-        pathNodes: set[tuple[int, int]],
-        group: set[tuple[int, int]] = set(),
-    ) -> set[tuple[int, int]]:
-        """Recursively gets all the nodes that are connected to the given node
-        excluding the nodes in the pathNodes set"""
-        if node in pathNodes:
-            return
-
-        group.add(node)
-        allChecked = True
-        for d in Dir:
-            coords = Day10.CoordsForDir(node, d)
-            if (
-                not Day10.IsInGrid(grid, coords)
-                or coords in group
-                or coords in pathNodes
-            ):
-                continue
-
-            allChecked = False
-            Day10.UpdateNodeGroup(grid, coords, pathNodes, group)
-
-        if allChecked:
-            return
-
     @classmethod
     def _Part2(cls) -> int:
-        cornerDirs = {
+        inverseCorners = {
             "L": {Dir.DOWN, Dir.LEFT},
             "F": {Dir.LEFT, Dir.UP},
             "7": {Dir.UP, Dir.RIGHT},
             "J": {Dir.RIGHT, Dir.DOWN},
         }
-
         grid = cls.GetGrid()
-        width, height = len(grid[0]), len(grid)
         sPos, lastDir, currentChar, currentPos = cls.GetFirstMove(grid)
-
         topDir = {(lastDir - 1) % 4}
         prevTopDir = topDir
         pathNodes = {sPos}
         top = set()
         bottom = set()
+        inside = None
 
         while True:
             pathNodes.add(currentPos)
             nextDir = cls.VALID_DIRS[currentChar].difference({lastDir}).pop()
 
             # If this is a corner, there is two possible top directions
-            if currentChar in cornerDirs:
+            if currentChar in inverseCorners:
                 prevTopDir = topDir.pop()
-                topDir = cornerDirs[currentChar].copy()
+                topDir = inverseCorners[currentChar].copy()
                 if (lastDir - 1) % 4 not in topDir:
-                    # Rotation needs to be reversed
-                    topDir = {(d + 2) % 4 for d in topDir}
+                    # Actually need the other possible directions
+                    topDir = cls.VALID_DIRS[currentChar].copy()
 
-            # Add the adjacent nodes to the top or bottom
+            # Check the adjacent nodes
             for d in Dir:
                 if d == lastDir or d == nextDir:
                     continue
@@ -162,44 +157,37 @@ class Day10(Solution):
                 coords = cls.CoordsForDir(currentPos, d)
 
                 if not cls.IsInGrid(grid, coords):
+                    # At this point we can determine which side is inside (enclosed)
+                    if inside is None:
+                        inside = bottom if d in topDir else top
                     continue
 
+                # Add the node to the top or bottom
                 if d in topDir:
                     top.add(coords)
                 elif (d + 2) % 4 in topDir:
                     bottom.add(coords)
-
-            currentPos = cls.CoordsForDir(currentPos, nextDir)
-            if currentPos == sPos:
-                break
 
             # If this was a corner, remove the previous top direction
             if len(topDir) == 2:
                 topDir.remove(prevTopDir)
 
             lastDir = (nextDir + 2) % 4
+            currentPos = cls.CoordsForDir(currentPos, nextDir)
             currentChar = grid[currentPos[1]][currentPos[0]]
 
-        # Get all the nodes that are not enclosed by the path
-        notEnclosed = set()
-        nodesOnEdge = {(i, j) for i in range(width) for j in [0, height - 1]} | {
-            (i, j) for j in range(height) for i in [0, width - 1]
-        }
-        for node in nodesOnEdge:
-            Day10.UpdateNodeGroup(grid, node, pathNodes, notEnclosed)
+            # Full loop
+            if currentPos == sPos:
+                break
 
-        # Add either the top or bottom nodes to the notEnclosed set
-        # depending on which one is outside the enclosed area
-        if bottom.intersection(notEnclosed):
-            for node in bottom.difference(notEnclosed):
-                Day10.UpdateNodeGroup(grid, node, pathNodes, notEnclosed)
-        elif top.intersection(notEnclosed):
-            for node in top.difference(notEnclosed):
-                Day10.UpdateNodeGroup(grid, node, pathNodes, notEnclosed)
+        # Recursively add all nodes that are connected to the inside nodes
+        enclosed = set()
+        for node in inside:
+            Day10.AddConnectedNodes(grid, node, pathNodes, enclosed)
 
-        # cls.DrawGrid(grid, pathNodes, notEnclosed)
+        # cls.Draw(grid, pathNodes, enclosed)
 
-        return width * height - len(pathNodes) - len(notEnclosed)
+        return len(enclosed)
 
 
 Day10.Run("day10.txt")
